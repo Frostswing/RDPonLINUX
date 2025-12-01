@@ -19,7 +19,7 @@ function App() {
           const parsed = JSON.parse(savedSession);
           // Validate with server
           try {
-            const res = await axios.get('http://localhost:3000/api/instances');
+            const res = await axios.get('/api/instances');
             const exists = res.data.find(i => i.id === parsed.id);
             if (exists) {
               setLastSession(parsed);
@@ -53,7 +53,7 @@ function App() {
 
   const checkInstancesAndAutoCreate = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/api/instances');
+      const res = await axios.get('/api/instances');
       // If we have instances, show list. If not, show list (empty state).
       // We don't auto-create anymore, user must explicitly create.
       // But wait, if we have a valid session, we would have handled it in init().
@@ -92,7 +92,7 @@ function App() {
     if (!lastSession) return;
     
     try {
-      const res = await axios.get('http://localhost:3000/api/instances');
+      const res = await axios.get('/api/instances');
       const instance = res.data.find(i => i.id === lastSession.id);
       
       if (instance) {

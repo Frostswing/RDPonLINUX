@@ -32,10 +32,16 @@ app.delete('/api/instances/:id', (req, res) => {
     }
 });
 
-// Serve static files from client build (later)
-// app.use(express.static(path.join(__dirname, '../client/dist')));
+// Serve static files from client build
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// Handle SPA routing
+app.get(/(.*)/, (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+});
 
 const PORT = process.env.SERVER_PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+const HOST = '100.100.42.11';
+app.listen(PORT, HOST, () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
 });

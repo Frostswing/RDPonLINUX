@@ -9,7 +9,7 @@ function InstanceList({ onConnect }) {
 
   const fetchInstances = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/api/instances');
+      const res = await axios.get('/api/instances');
       setInstances(res.data);
     } catch (err) {
       console.error("Failed to fetch instances", err);
@@ -27,7 +27,7 @@ function InstanceList({ onConnect }) {
   const launchInstance = async () => {
     setLoading(true);
     try {
-      await axios.post('http://localhost:3000/api/instances');
+      await axios.post('/api/instances');
       fetchInstances();
     } catch (err) {
       alert("Failed to launch instance");
@@ -40,7 +40,7 @@ function InstanceList({ onConnect }) {
     e.stopPropagation();
     if (!confirm("Are you sure you want to terminate this instance?")) return;
     try {
-      await axios.delete(`http://localhost:3000/api/instances/${id}`);
+      await axios.delete(`/api/instances/${id}`);
       fetchInstances();
     } catch (err) {
       alert("Failed to terminate instance");

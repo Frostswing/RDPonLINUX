@@ -111,7 +111,7 @@ session.appsFile: ${fluxboxAppsPath}
     startWebsockify() {
         return new Promise((resolve) => {
             const ws = spawn('websockify', [
-                this.wsPort.toString(),
+                `100.100.42.11:${this.wsPort}`,
                 `localhost:${this.vncPort}`
             ]);
             ws.stdout.on('data', d => console.log(`WS stdout: ${d}`));
