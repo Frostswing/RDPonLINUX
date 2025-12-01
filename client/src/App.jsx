@@ -17,6 +17,11 @@ function App() {
       if (savedSession) {
         try {
           const parsed = JSON.parse(savedSession);
+        // No instances, auto-create
+        const createRes = await axios.post('/api/instances', {
+          width: window.innerWidth,
+          height: window.innerHeight
+        });
           // Validate with server
           try {
             const res = await axios.get('/api/instances');

@@ -18,7 +18,7 @@ class InstanceManager {
         this.startWsPort = startWsPort;
     }
 
-    async createInstance() {
+    async createInstance(options = {}) {
         const id = uuidv4();
         
         // Allocate resources
@@ -29,7 +29,7 @@ class InstanceManager {
 
         console.log(`Creating session ${id} on :${displayNum} (VNC: ${vncPort}, WS: ${wsPort})`);
 
-        const session = new Session(id, displayNum, vncPort, wsPort);
+        const session = new Session(id, displayNum, vncPort, wsPort, options);
         this.sessions.set(id, session);
 
         try {

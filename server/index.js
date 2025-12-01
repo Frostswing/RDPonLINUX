@@ -9,9 +9,9 @@ app.use(cors());
 app.use(express.json());
 
 // API Endpoints
-app.post('/api/instances', (req, res) => {
+app.post('/api/instances', async (req, res) => {
     try {
-        const instance = instanceManager.createInstance();
+        const instance = await instanceManager.createInstance(req.body);
         res.json(instance);
     } catch (error) {
         console.error(error);

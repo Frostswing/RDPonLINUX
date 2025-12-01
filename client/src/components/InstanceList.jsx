@@ -27,7 +27,10 @@ function InstanceList({ onConnect }) {
   const launchInstance = async () => {
     setLoading(true);
     try {
-      await axios.post('/api/instances');
+      await axios.post('/api/instances', {
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
       fetchInstances();
     } catch (err) {
       alert("Failed to launch instance");

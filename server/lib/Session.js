@@ -3,12 +3,14 @@ const path = require('path');
 const fs = require('fs');
 
 class Session {
-    constructor(id, displayNum, vncPort, wsPort) {
+    constructor(id, displayNum, vncPort, wsPort, options = {}) {
         this.id = id;
         this.displayNum = displayNum;
         this.display = `:${displayNum}`;
         this.vncPort = vncPort;
         this.wsPort = wsPort;
+        this.width = options.width || 1920;
+        this.height = options.height || 1080;
         this.userDataDir = path.join('/tmp', `antigravity-${id}`);
         this.processes = {};
         this.createdAt = new Date();
@@ -70,7 +72,7 @@ session.appsFile: ${fluxboxAppsPath}
 
     startXvfb() {
         return new Promise((resolve, reject) => {
-            const xvfb = spawn('Xvfb', [this.display, '-screen', '0', '1920x1080x24']);
+            const xvfb = spawn('Xvfb', [this.display, '-screen', '0', `${this.width}x${this.height}x24`]);
             xvfb.on('error', reject);
             this.processes.xvfb = xvfb;
             // Give Xvfb a moment to start
@@ -140,7 +142,7 @@ session.appsFile: ${fluxboxAppsPath}
             args.push('--no-sandbox');
             args.push('--disable-gpu');
             args.push('--disable-software-rasterizer');
-            args.push('--window-size=1920,1080');
+            args.push(`--window-size=${this.width},${this.height}`);
             
             const extensionsDir = path.join(process.env.HOME, '.antigravity/extensions');
             if (fs.existsSync(extensionsDir)) {
