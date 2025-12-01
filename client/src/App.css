@@ -1,0 +1,140 @@
+:root {
+  --bg-color: #1a1a2e;
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --text-primary: #ffffff;
+  --text-secondary: #aaaaaa;
+  --accent-primary: #6e8efb;
+  --accent-secondary: #a777e3;
+  --danger: #ff4d4d;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --glass-blur: 10px;
+}
+
+.app-container {
+  font-family: 'Inter', sans-serif;
+  width: 100%;
+  height: 100vh;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  padding: 1.5rem 2rem;
+  background: rgba(26, 26, 46, 0.8);
+  backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+main {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.error-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 77, 77, 0.9);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 50px;
+  z-index: 2000;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(255, 77, 77, 0.3);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translate(-50%, -100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+/* Viewer Styles */
+.viewer-container.full-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.floating-controls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1001;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.floating-controls:hover {
+  opacity: 1;
+}
+
+.disconnect-btn {
+  background: rgba(255, 77, 77, 0.9);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 600;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.disconnect-btn:hover {
+  transform: translateY(-2px);
+  background: #ff4d4d;
+  box-shadow: 0 6px 20px rgba(255, 77, 77, 0.4);
+}
