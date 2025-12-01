@@ -23,6 +23,16 @@ app.get('/api/instances', (req, res) => {
     res.json(instanceManager.listInstances());
 });
 
+app.post('/api/instances/:id/resize', (req, res) => {
+    const { width, height } = req.body;
+    const success = instanceManager.resizeInstance(req.params.id, width, height);
+    if (success) {
+        res.json({ success: true });
+    } else {
+        res.status(404).json({ error: 'Instance not found' });
+    }
+});
+
 app.delete('/api/instances/:id', (req, res) => {
     const success = instanceManager.stopInstance(req.params.id);
     if (success) {

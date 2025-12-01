@@ -75,6 +75,15 @@ class InstanceManager {
         }));
     }
 
+    resizeInstance(id, width, height) {
+        const session = this.sessions.get(id);
+        if (session) {
+            session.resize(width, height);
+            return true;
+        }
+        return false;
+    }
+
     stopInstance(id) {
         const session = this.sessions.get(id);
         if (session) {

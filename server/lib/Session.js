@@ -72,11 +72,21 @@ session.appsFile: ${fluxboxAppsPath}
 
     startXvfb() {
         return new Promise((resolve, reject) => {
-            const xvfb = spawn('Xvfb', [this.display, '-screen', '0', `${this.width}x${this.height}x24`]);
+            // Start with a large framebuffer to allow resizing
+            const xvfb = spawn('Xvfb', [this.display, '-screen', '0', '4096x4096x24']);
             xvfb.on('error', reject);
             this.processes.xvfb = xvfb;
-            // Give Xvfb a moment to start
-            setTimeout(resolve, 500);
+            
+            // Give Xvfb a moment to start, then set initial resolution
+            setTimeout(async () => {
+                try {
+                    await this.resize(this.width, this.height);
+                    resolve();
+                } catch (err) {
+                    console.error('Failed to set initial resolution:', err);
+                    resolve(); // Continue anyway
+                }
+            }, 1000);
         });
     }
 
@@ -138,11 +148,11 @@ session.appsFile: ${fluxboxAppsPath}
         if (appCommand.includes('antigravity')) {
             args.push('--wait');
             args.push('--user-data-dir', this.userDataDir);
-            args.push('--start-maximized');
+            args.push('--start-fullscreen');
             args.push('--no-sandbox');
             args.push('--disable-gpu');
             args.push('--disable-software-rasterizer');
-            args.push(`--window-size=${this.width},${this.height}`);
+            // args.push(`--window-size=${this.width},${this.height}`); // Let fullscreen handle it
             
             const extensionsDir = path.join(process.env.HOME, '.antigravity/extensions');
             if (fs.existsSync(extensionsDir)) {
@@ -152,19 +162,9 @@ session.appsFile: ${fluxboxAppsPath}
 
         console.log(`Spawning app: ${appCommand} ${args.join(' ')}`);
 
-        console.log(`Spawning app: ${appCommand} ${args.join(' ')}`);
-
         // Try to find a dbus wrapper, or fall back to direct execution
         let spawnCommand = appCommand;
         let spawnArgs = args;
-
-        // We can't easily check for existence synchronously without 'which' or 'fs.access' on path
-        // So we'll try to spawn directly for now to fix the ENOENT
-        // If the user installs dbus-x11, they can uncomment or we can add detection later
-        
-        // NOTE: If you have dbus-x11 installed, you can use:
-        // spawnCommand = 'dbus-launch';
-        // spawnArgs = ['--exit-with-session', appCommand, ...args];
 
         const app = spawn(spawnCommand, spawnArgs, { env });
         
@@ -183,6 +183,68 @@ session.appsFile: ${fluxboxAppsPath}
         });
 
         this.processes.app = app;
+    }
+
+    resize(width, height) {
+        return new Promise((resolve, reject) => {
+            if (!width || !height) {
+                resolve();
+                return;
+            }
+            console.log(`Resizing session ${this.id} to ${width}x${height}`);
+            this.width = width;
+            this.height = height;
+
+            // 1. Generate modeline using cvt
+            const cvt = spawn('cvt', [width, height]);
+            let cvtOutput = '';
+            cvt.stdout.on('data', d => cvtOutput += d.toString());
+            
+            cvt.on('close', (code) => {
+                if (code !== 0) {
+                    console.error('cvt failed');
+                    reject(new Error('cvt failed'));
+                    return;
+                }
+
+                // Parse modeline
+                // Example: Modeline "1920x1080_60.00"  173.00  1920 2048 2248 2576  1080 1083 1088 1120 -hsync +vsync
+                const match = cvtOutput.match(/Modeline\s+"([^"]+)"\s+(.*)/);
+                if (!match) {
+                    console.error('Failed to parse cvt output');
+                    reject(new Error('Failed to parse cvt output'));
+                    return;
+                }
+
+                const modeName = match[1];
+                const modeParams = match[2];
+
+                // 2. Add new mode
+                const xrandrNewMode = spawn('xrandr', ['-display', this.display, '--newmode', modeName, ...modeParams.split(/\s+/).filter(Boolean)]);
+                
+                xrandrNewMode.on('close', () => {
+                    // 3. Add mode to output (assuming 'screen' as output name based on previous check)
+                    // We should dynamically find output name, but 'screen' is standard for Xvfb
+                    const outputName = 'screen'; 
+                    const xrandrAddMode = spawn('xrandr', ['-display', this.display, '--addmode', outputName, modeName]);
+                    
+                    xrandrAddMode.on('close', () => {
+                        // 4. Set mode
+                        const xrandrSetMode = spawn('xrandr', ['-display', this.display, '--output', outputName, '--mode', modeName]);
+                        
+                        xrandrSetMode.on('close', (code) => {
+                            if (code === 0) {
+                                console.log(`Successfully resized to ${width}x${height}`);
+                                resolve();
+                            } else {
+                                console.error('Failed to set mode');
+                                reject(new Error('Failed to set mode'));
+                            }
+                        });
+                    });
+                });
+            });
+        });
     }
 
     cleanup() {
