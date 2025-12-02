@@ -11,89 +11,107 @@ function App() {
   const [lastSession, setLastSession] = useState(null);
   const [error, setError] = useState(null);
 
+  // Heartbeat to keep session "active" in localStorage
+  useEffect(() => {
+    if (view === 'viewer' && currentInstance) {
+      const interval = setInterval(() => {
+        const activeSessions = JSON.parse(localStorage.getItem('antigravity_active_sessions') || '{}');
+        activeSessions[currentInstance.id] = Date.now();
+        localStorage.setItem('antigravity_active_sessions', JSON.stringify(activeSessions));
+      }, 1000); // Update every second
+
+      return () => clearInterval(interval);
+    }
+  }, [view, currentInstance]);
+
   useEffect(() => {
     const init = async () => {
-      const savedSession = localStorage.getItem('antigravity_last_session');
-      if (savedSession) {
-        try {
-          const parsed = JSON.parse(savedSession);
-        // No instances, auto-create
-        const createRes = await axios.post('/api/instances', {
-          width: window.innerWidth,
-          height: window.innerHeight
-        });
-          // Validate with server
-          try {
-            const res = await axios.get('/api/instances');
-            const exists = res.data.find(i => i.id === parsed.id);
-            if (exists) {
-              setLastSession(parsed);
-              setView('landing');
-            } else {
-              // Session invalid, clear it
-              localStorage.removeItem('antigravity_last_session');
-              checkInstancesAndAutoCreate();
-            }
-          } catch (err) {
-            // Server error, maybe offline? Fallback to list or keep landing but it might fail
-            console.error("Failed to validate session", err);
-            // If we can't reach server, we probably can't connect anyway.
-            // Let's just show list/landing and let user try.
-            // But to be safe against "always seeing resume", let's clear if we can't verify?
-            // No, if server is down, we want to show something.
-            // Let's assume if we can't verify, we don't show resume.
-             localStorage.removeItem('antigravity_last_session');
-             checkInstancesAndAutoCreate();
-          }
-        } catch (e) {
-          localStorage.removeItem('antigravity_last_session');
-          checkInstancesAndAutoCreate();
+      try {
+        // 1. Get all instances from server
+        const res = await axios.get('/api/instances');
+        let instances = res.data;
+
+        // If no instances, create one
+        if (instances.length === 0) {
+           const createRes = await axios.post('/api/instances', {
+            width: window.innerWidth,
+            height: window.innerHeight
+          });
+          instances = [createRes.data];
         }
-      } else {
-        checkInstancesAndAutoCreate();
+
+        // 2. Get session history and active sessions
+        const history = JSON.parse(localStorage.getItem('antigravity_session_history') || '{}');
+        const activeSessions = JSON.parse(localStorage.getItem('antigravity_active_sessions') || '{}');
+        const now = Date.now();
+
+        // Filter out stale active sessions (older than 5 seconds)
+        Object.keys(activeSessions).forEach(id => {
+          if (now - activeSessions[id] > 5000) {
+            delete activeSessions[id];
+          }
+        });
+        localStorage.setItem('antigravity_active_sessions', JSON.stringify(activeSessions));
+
+        // 3. Sort instances by last accessed time (descending)
+        // If not in history, use createdAt (newest first) or just append
+        instances.sort((a, b) => {
+          const timeA = history[a.id] || 0;
+          const timeB = history[b.id] || 0;
+          if (timeA !== timeB) return timeB - timeA; // Most recently used first
+          // If never used, maybe sort by creation time?
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+
+        // 4. Find the first instance that is NOT active
+        const targetInstance = instances.find(inst => !activeSessions[inst.id]);
+
+        if (targetInstance) {
+          // Found a free session, connect to it
+          handleConnect(targetInstance);
+        } else {
+          // All sessions are active?
+          // Fallback: Connect to the first one (most recently used) even if active?
+          // Or maybe the one with the oldest heartbeat?
+          // For now, let's connect to the first one in the sorted list.
+          if (instances.length > 0) {
+             handleConnect(instances[0]);
+          } else {
+             // Should not happen as we created one if empty
+             setView('landing');
+          }
+        }
+
+      } catch (err) {
+        console.error("Initialization failed", err);
+        setView('landing');
       }
     };
     init();
   }, []);
 
-  const checkInstancesAndAutoCreate = async () => {
-    try {
-      const res = await axios.get('/api/instances');
-      // If we have instances, show list. If not, show list (empty state).
-      // We don't auto-create anymore, user must explicitly create.
-      // But wait, if we have a valid session, we would have handled it in init().
-      // So here we just decide between landing (if we want to show it initially) or list.
-      // The user flow seems to be: Landing -> (Resume or Management).
-      // If we don't have a session, we should probably show Landing Page?
-      // But Landing Page only has "Resume" and "Go to Management".
-      // If "Resume" is not possible (no session), then Landing Page is just a big "Go to Management" button?
-      // Maybe we should just go to 'list' if no session?
-      // Or show Landing with disabled Resume?
-      // Let's go to 'landing' but ensure Resume is disabled/hidden if no session.
-      // Actually, my LandingPage component hides the Resume button if no lastSessionDate is passed.
-      // But `lastSession` state is null here.
-      // So showing 'landing' is fine.
-      setView('landing');
-    } catch (err) {
-      console.error("Failed to check instances", err);
-      setView('landing'); // Default to landing on error too
-    }
-  };
-
   const handleConnect = (instance) => {
     setCurrentInstance(instance);
-    // Save session
+    
+    // Update history
+    const history = JSON.parse(localStorage.getItem('antigravity_session_history') || '{}');
+    history[instance.id] = Date.now();
+    localStorage.setItem('antigravity_session_history', JSON.stringify(history));
+
+    // Update last session for "Resume" button (though we auto-connect now)
     const sessionData = {
       id: instance.id,
       date: new Date().toISOString()
     };
     localStorage.setItem('antigravity_last_session', JSON.stringify(sessionData));
     setLastSession(sessionData);
+
     setView('viewer');
     setError(null);
   };
 
   const handleResume = async () => {
+     // With auto-connect, this might be less used, but still good to have
     if (!lastSession) return;
     
     try {
@@ -103,7 +121,6 @@ function App() {
       if (instance) {
         handleConnect(instance);
       } else {
-        // Instance no longer exists
         setError('Last session no longer exists.');
         localStorage.removeItem('antigravity_last_session');
         setLastSession(null);
@@ -146,6 +163,9 @@ function App() {
         )}
         {view === 'viewer' && currentInstance && (
           <Viewer instance={currentInstance} onBack={handleBack} />
+        )}
+        {view === 'loading' && (
+            <div className="loading-screen">Connecting...</div>
         )}
       </main>
     </div>
